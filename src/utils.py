@@ -35,6 +35,9 @@ class BitcoinRPC:
             if not output:
                 return None
             
+            if self.verbose:
+                print(f"Output: {output}")
+                
             try:
                 data = json.loads(output)
                 if isinstance(data, dict) and 'feerate' in data:
@@ -80,7 +83,6 @@ class BitcoinRPC:
         self,
         inputs: List[Dict],
         outputs: Dict,
-        replaceable: bool = False,
         locktime: Optional[int] = None
     ) -> Optional[str]:
         """Create raw transaction"""
@@ -117,10 +119,6 @@ class BitcoinRPC:
         """Decode raw transaction"""
         return self._call('decoderawtransaction', hex_tx)
 
-    def signrawtransactionwithwallet(self, hex_tx: str) -> Dict:
-        """Sign raw transaction using wallet"""
-        return self._call('signrawtransactionwithwallet', hex_tx)
-
     def getrawtransaction(self, txid: str, verbose: bool = False) -> Dict:
         """Get raw transaction info"""
         args = ['getrawtransaction', txid]
@@ -133,7 +131,12 @@ class BitcoinRPC:
         if self.test:
             current_time = 1711944215 - 30 * 86400
         return current_time
+    
+    def getblockchaininfo(self) -> Dict:
+        """Get blockchain info"""
+        return self._call('getblockchaininfo')
 
+    
 class Prompter:
     @staticmethod
     def confirm_action(prompt: str, warning_msg: str = None) -> bool:

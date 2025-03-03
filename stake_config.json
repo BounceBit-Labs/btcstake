@@ -5,7 +5,8 @@
   "amount_btc": "0.00100000",
   "change_address": "1EYWEKTtUmM7Q2tarTBdyiWvNbpfm8sfkp",
   "utxos": [
-    "2d54637694d03fbe954002a83f51fb58bf86fc3e538efcd4c2a301dc1403d467:0"
+    "1c7c9639434ac4182f402171b97718908e1d393a39ad235cbd11bc0b56a4214c:0",
+    "10e8a0e065f0a6460fddc7d239b205ffed2a236eff65e6b25968427114636a34:1"
   ],
   "use_p2sh": false,
   "_comments": {

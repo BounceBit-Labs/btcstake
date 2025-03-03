@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import List, Optional, Dict
 from .utils import BitcoinRPC, Prompter
 from .validation import Validator
-
+from .config import MIN_FEE, CONF_TARGET
 class Transaction:
     def __init__(self, rpc: BitcoinRPC, verbose: bool = False, test: bool = False):
         self.verbose = verbose
@@ -17,27 +17,15 @@ class Transaction:
         fee_rate = Decimal(self.rpc.estimatesmartfee(conf_target)['feerate'])
         tx_size = 300
         fee = (fee_rate * tx_size / 1000).quantize(Decimal('0.00000001'))
-        min_fee = Decimal('0.00001001')
-        if fee < min_fee:
-            fee = min_fee
-        if self.verbose:
-            print(f"Fee: {fee:.8f} BTC")
+        if fee < MIN_FEE:
+            fee = MIN_FEE
         return fee
 
-    def build_transaction(self, utxos: List[str], amount_btc: str, change_address: str, 
-                         op_return_data: str, redeem_script: str, use_p2sh: bool = False) -> Optional[Dict]:
+    def build_stake_tx(self, utxos: List[str], amount_btc: str, change_address: str, 
+                         op_return_data: str, script_info: Dict, use_p2sh: bool = False) -> Optional[Dict]:
         amount = Decimal(amount_btc).quantize(Decimal('0.00000001'))
-        if not self.validator.validate_address(change_address) or \
-           not self.validator.validate_utxos(utxos, amount) or \
-           not self.validator.validate_script(redeem_script):
-            return None
-            
         total_input = Decimal('0')
-        inputs = []
-        script_info = self.rpc.decodescript(redeem_script)
-        if not script_info:
-            return None
-            
+        inputs = [] 
         for utxo in utxos:
             txid, vout = utxo.split(':')
             vout = int(vout)
@@ -50,17 +38,21 @@ class Transaction:
             inputs.append({
                 'txid': txid,
                 'vout': vout,
-                'scriptPubKey': utxo_info['scriptPubKey']['hex']
+                'scriptPubKey': utxo_info['scriptPubKey']['hex'],
+                'amount': str(utxo_info['value'])
             })
             
         fee = self.calculate_fees(use_p2sh)
         change = (total_input - amount - fee).quantize(Decimal('0.00000001'))
         if change < 0:
-            print("Insufficient funds")
+            print(f"Insufficient funds: total_input: {total_input} BTC, amount: {amount} BTC, fee: {fee} BTC")
             return None
             
         outputs = {}
-        outputs[script_info['p2sh' if use_p2sh else 'segwit']['address']] = f"{amount:.8f}"
+        address = script_info['p2sh']
+        if not use_p2sh:
+            address = script_info['segwit']['address']
+        outputs[address] = f"{amount:.8f}"
         if change > Decimal('0.00000546'):
             outputs[change_address] = f"{change:.8f}"
         outputs['data'] = op_return_data
@@ -71,70 +63,53 @@ class Transaction:
             print(f"Fee: {fee} BTC") 
             print(f"Change: {change} BTC")
             
-        raw_tx = self.create_raw_tx(inputs, outputs, redeem_script, use_p2sh)
+        locktime = int(script_info['asm'].split()[0])
+        raw_tx = self.rpc.createrawtransaction(
+            inputs=inputs,
+            outputs=outputs,
+            locktime=locktime
+        )
         if not raw_tx:
             return None
-        return self.sign_transaction(raw_tx, inputs, redeem_script, use_p2sh)
+        if self.verbose:
+            print(self.rpc.decoderawtransaction(raw_tx))
+        
+        print("\nPaste or type your private key (input will not be shown)")
+        privkey = Prompter.get_hidden_input("Enter private key for signing: ")
+        print("Private key received")
 
-    def create_raw_tx(self, inputs: List[Dict], outputs: Dict, redeem_script: str, use_p2sh: bool = False) -> Optional[str]:
-        try:
-            script_info = self.rpc.decodescript(redeem_script)
-            if not script_info:
-                return None
-            locktime = int(script_info['asm'].split()[0])
-            for inp in inputs:
-                inp['sequence'] = 0xfffffffe
-            raw_tx = self.rpc.createrawtransaction(
-                inputs=inputs,
-                outputs=outputs,
-                replaceable=not use_p2sh,
-                locktime=locktime
-            )
-            if self.verbose:
-                print(self.rpc.decoderawtransaction(raw_tx))
-            return raw_tx
-        except Exception as e:
-            print(f"Error: {e}")
-            return None
+        privkeys = []
+        for inp in inputs:
+            privkeys.append(privkey)
+            
+        return self.sign_transaction(raw_tx, privkeys, inputs)
 
-    def sign_transaction(self, raw_tx: str, inputs: List[Dict], redeem_script: str, use_p2sh: bool = False) -> Optional[Dict]:
-        try:
-            print("\nPaste or type your private key (input will not be shown)")
-            privkey = Prompter.get_hidden_input("Enter private key for signing: ")
-            print("Private key received")
+    def sign_transaction(self, raw_tx: str, privkeys: List[str], signing_inputs: List[Dict]) -> Optional[Dict]:
+        # try:
+        if self.verbose:
+            print("\nSigning inputs:")
+            print(json.dumps(signing_inputs, indent=2))
+        
+        signed_result = self.rpc.signrawtransactionwithkey(raw_tx, privkeys, signing_inputs)
+        if signed_result['complete']:
+            return {
+                'signed_tx': signed_result['hex'],
+                # 'privkey': privkey
+            }
+        else:
+            print(f"\nError: {signed_result['errors'][0]['error']}")
+            print("Error: Transaction signing failed!")
             
-            signing_inputs = []
-            for inp in inputs:
-                signing_inputs.append({
-                    'txid': inp['txid'],
-                    'vout': inp['vout'],
-                    'scriptPubKey': inp['scriptPubKey']
-                })
-            
-            if self.verbose:
-                print("\nSigning inputs:")
-                print(json.dumps(signing_inputs, indent=2))
-            
-            signed_result = self.rpc.signrawtransactionwithkey(raw_tx, [privkey], signing_inputs)
-            if signed_result['complete']:
-                return {
-                    'signed_tx': signed_result['hex'],
-                    'privkey': privkey
-                }
-            else:
-                print("Error: Transaction signing failed!")
-                if self.verbose:
-                    print(json.dumps(signed_result, indent=2))
-                return None
-        except Exception as e:
-            print(f"Error: {e}")
             return None
+        # except Exception as e:
+        #     print(f"Error: {e}")
+        #     return None
 
     def broadcast(self, signed_tx: str) -> Optional[str]:
         try:
             if self.verbose:
-                print(self.rpc.decoderawtransaction(signed_tx))
-            if not Prompter.confirm_action("Broadcast?"):
+                self.rpc.decoderawtransaction(signed_tx)
+            if not Prompter.confirm_action("Confirm broadcast the transaction?"):
                 return None
             if self.test:
                 return "test_txid"
@@ -149,7 +124,7 @@ class Transaction:
             warning_msg + "\nPlease verify that you are using the correct private key!"
         )
 
-    def verify_spend_signature(self, raw_tx: str, privkey: str, pubkey: str, redeem_script: str, use_p2sh: bool = False) -> bool:
+    def verify_stake_signature(self, raw_tx: str, privkey: str, pubkey: str, redeem_script: str, script_info: Dict, use_p2sh: bool = False) -> bool:
         """Verify if the private key matches pubkey and can spend the first output"""
         try:
             # Get first output info
@@ -161,7 +136,6 @@ class Transaction:
             vout = decoded['vout'][0]
             
             # Verify scriptPubKey is P2WSH
-            script_info = self.rpc.decodescript(redeem_script)
             expected_script_hash = script_info['segwit']['hex'][4:]  # Remove '0020' prefix
             actual_script_hash = vout['scriptPubKey']['hex'][4:]  # Remove '0020' prefix
             
@@ -239,7 +213,8 @@ class Transaction:
         self,
         utxo: str,
         address: str,
-        redeem_script: str
+        redeem_script: str,
+        script_info: Dict
     ) -> Optional[str]:
         """Build and sign unlock transaction"""
         try:
@@ -252,15 +227,9 @@ class Transaction:
                 return None
             
             # Get UTXO details
-            utxo_info = self.rpc.gettxout(txid, vout)
+            utxo_info = self.rpc.gettxout(txid, vout, True)
             if not utxo_info:
                 print(f"Error: UTXO {txid}:{vout} not found or already spent")
-                return None
-            
-            # Get script info and locktime
-            script_info = self.rpc.decodescript(redeem_script)
-            if not script_info:
-                print("Error: Failed to decode redeem script")
                 return None
             
             # Get locktime from script
@@ -272,10 +241,8 @@ class Transaction:
             
             # Get amount and calculate fee
             amount = Decimal(utxo_info['value'])
-            
-            fee_rate = self.rpc.estimatesmartfee(6)['feerate']
-            tx_size = 300 if use_p2sh else 200  # P2SH is larger than P2WSH
-            fee = Decimal(fee_rate) * tx_size / 1000000
+
+            fee = self.calculate_fees(use_p2sh)
             
             # Calculate final amount
             spend_amount = amount - fee

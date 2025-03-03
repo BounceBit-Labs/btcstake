@@ -15,6 +15,8 @@ CONF_TARGET = 6  # Target number of blocks for confirmation
 MIN_STAKE_AMOUNT = Decimal('0.00100000')  # Minimum stake amount in BTC (1 mBTC)
 MAX_STAKE_DAYS = 365  # Maximum stake period in days
 
+MIN_FEE = Decimal('0.00001001')
+
 @dataclass
 class Config:
     pubkey: str
@@ -47,7 +49,7 @@ class Config:
         self.bb_address = args.bb_address or config.get('bb_address')
         self.change_address = args.change_address or config.get('change_address')
         self.utxos = args.utxos.split(',') if args.utxos else config.get('utxos', [])
-        self.use_p2sh = config.get('use_p2sh', False)
+        self.use_p2sh = args.use_p2sh or config.get('use_p2sh', False)
         self.test = args.test
         self.verbose = args.verbose
         

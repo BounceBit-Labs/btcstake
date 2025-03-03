@@ -53,9 +53,7 @@ class Script:
             
         # Calculate lock time
         current_time = self.rpc.getcurrenttime()
-        
         lock_time = current_time + days * 86400
-        
         
         try:
             # Convert to hex and validate
@@ -73,12 +71,6 @@ class Script:
                 f"21{pubkey}"   # Push 33 bytes pubkey
                 "ac"           # OP_CHECKSIG
             )
-            
-            # Get script info from bitcoin-cli
-            script_info = self.rpc.decodescript(script)
-            if self.verbose:
-                print(f"Script hex: {script}")
-                print(f"Script Info: {json.dumps(script_info, indent=2)}")
                 
             return script
             

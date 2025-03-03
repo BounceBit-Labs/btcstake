@@ -24,7 +24,7 @@ class Spender:
             print("Error: Invalid redeem script")
             return None
 
-        signed_tx = self.tx.build_spend_tx(utxo, address, redeem_script)
+        signed_tx = self.tx.build_spend_tx(utxo, address, redeem_script, script_info)
         if not signed_tx:
             print("Error: Failed to build unlock transaction")
             return None
