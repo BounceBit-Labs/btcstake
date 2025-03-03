@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
-import time
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional, Dict
@@ -53,11 +51,6 @@ class Staker:
             return None
 
         signed_tx = result['signed_tx']
-        # privkey = result['privkey']
-
-        # if not self.tx.verify_stake_signature(signed_tx, privkey, config.pubkey, redeem_script, script_info, config.use_p2sh):
-        #     print("Error: Private key verification failed")
-        #     return None
 
         if not self._confirm_transaction(config, op_return_data, redeem_script, script_info):
             return None
@@ -67,7 +60,7 @@ class Staker:
             print("Error: Failed to broadcast transaction")
             return None
 
-        self._show_success_info(txid, redeem_script, config.days)
+        self._show_success_info(txid, redeem_script, config.days, config.change_address)
         return txid
 
     def _confirm_transaction(self, config: Config, op_return_data: str, redeem_script: str, script_info: Dict) -> bool:
@@ -84,18 +77,16 @@ class Staker:
         print(f"P2WSH: {script_info['segwit']['address']}")
         print(f"P2SH: {script_info['p2sh']}")
         print(f"OP_RETURN: {op_return_data}")
-        
-        # if self.verbose:
-        #     print(f"Script Info: {json.dumps(script_info, indent=2)}")
             
-        return Prompter.confirm_action("Confirm data?")
+        return Prompter.confirm_action("Confirm data and proceed?")
 
-    def _show_success_info(self, txid: str, redeem_script: str, days: int) -> None:
+    def _show_success_info(self, txid: str, redeem_script: str, days: int, change_address: str) -> None:
         print(f"\nTransaction broadcast: {txid}")
         print("\nSave for unlocking:")
         print(f"UTXO: {txid}:0")
         print(f"Redeem Script: {redeem_script}")
-        print(f"./spend.py --utxo={txid}:0 --redeem_script={redeem_script} --address=<destination>")
+        print(f"Change Address: {change_address}")
+        print(f"./spend.py --utxo={txid}:0 --redeem_script={redeem_script} --address={change_address}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='BTC Staking Tool')

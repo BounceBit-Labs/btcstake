@@ -9,13 +9,14 @@ from decimal import Decimal
 # BB chain constants
 BB_CHAIN_ID = "1771"  # BB chain ID (6001) in hex
 BB_CONTRACT = "0000000000000000000000000000000000000800"  # Fixed LSD contract address
-CONF_TARGET = 6  # Target number of blocks for confirmation
 
 # Staking constants
 MIN_STAKE_AMOUNT = Decimal('0.00100000')  # Minimum stake amount in BTC (1 mBTC)
 MAX_STAKE_DAYS = 365  # Maximum stake period in days
 
 MIN_FEE = Decimal('0.00001001')
+MAX_FEE = Decimal('0.00010001')
+CONF_TARGET = 2  # Target number of blocks for confirmation
 
 @dataclass
 class Config:

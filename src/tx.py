@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import List, Optional, Dict
 from .utils import BitcoinRPC, Prompter
 from .validation import Validator
-from .config import MIN_FEE, CONF_TARGET
+from .config import MIN_FEE, MAX_FEE, CONF_TARGET
 class Transaction:
     def __init__(self, rpc: BitcoinRPC, verbose: bool = False, test: bool = False):
         self.verbose = verbose
@@ -13,12 +13,21 @@ class Transaction:
         self.rpc = rpc
         self.validator = Validator(rpc, verbose=verbose, test=test)
 
-    def calculate_fees(self, use_p2sh: bool = False, conf_target: int = 6) -> Decimal:
-        fee_rate = Decimal(self.rpc.estimatesmartfee(conf_target)['feerate'])
-        tx_size = 300
+    def calculate_fees(self, use_p2sh: bool = False, n_utxo: int = 1) -> Decimal:
+        fee_rate = Decimal(self.rpc.estimatesmartfee(CONF_TARGET)['feerate'])
+
+        tx_size = 300 if use_p2sh else 222
+        tx_size += n_utxo * 148
+
         fee = (fee_rate * tx_size / 1000).quantize(Decimal('0.00000001'))
-        if fee < MIN_FEE:
-            fee = MIN_FEE
+        fee = max(MIN_FEE, fee)
+        fee = min(MAX_FEE, fee)
+
+        if self.verbose:
+            print(f"Fee: {fee} BTC")
+            print(f"Fee rate: {fee_rate} sat/vB")
+            print(f"Tx size: {tx_size} bytes")
+
         return fee
 
     def build_stake_tx(self, utxos: List[str], amount_btc: str, change_address: str, 
@@ -42,7 +51,7 @@ class Transaction:
                 'amount': str(utxo_info['value'])
             })
             
-        fee = self.calculate_fees(use_p2sh)
+        fee = self.calculate_fees(use_p2sh, len(utxos))
         change = (total_input - amount - fee).quantize(Decimal('0.00000001'))
         if change < 0:
             print(f"Insufficient funds: total_input: {total_input} BTC, amount: {amount} BTC, fee: {fee} BTC")
@@ -63,29 +72,29 @@ class Transaction:
             print(f"Fee: {fee} BTC") 
             print(f"Change: {change} BTC")
             
-        locktime = int(script_info['asm'].split()[0])
         raw_tx = self.rpc.createrawtransaction(
             inputs=inputs,
             outputs=outputs,
-            locktime=locktime
+            locktime=0 # Must be 0 for broadcast immediately
         )
         if not raw_tx:
             return None
         if self.verbose:
-            print(self.rpc.decoderawtransaction(raw_tx))
+            self.rpc.decoderawtransaction(raw_tx)
         
         print("\nPaste or type your private key (input will not be shown)")
         privkey = Prompter.get_hidden_input("Enter private key for signing: ")
         print("Private key received")
 
-        privkeys = []
-        for inp in inputs:
-            privkeys.append(privkey)
-            
-        return self.sign_transaction(raw_tx, privkeys, inputs)
+        privkeys = [privkey for _ in range(len(inputs))]
+        signed_result = self.sign_transaction(raw_tx, privkeys, inputs)
+        if not signed_result:
+            return None
+        
+        # signed_result['privkey'] = privkey
+        return signed_result
 
     def sign_transaction(self, raw_tx: str, privkeys: List[str], signing_inputs: List[Dict]) -> Optional[Dict]:
-        # try:
         if self.verbose:
             print("\nSigning inputs:")
             print(json.dumps(signing_inputs, indent=2))
@@ -94,16 +103,12 @@ class Transaction:
         if signed_result['complete']:
             return {
                 'signed_tx': signed_result['hex'],
-                # 'privkey': privkey
             }
         else:
             print(f"\nError: {signed_result['errors'][0]['error']}")
             print("Error: Transaction signing failed!")
             
             return None
-        # except Exception as e:
-        #     print(f"Error: {e}")
-        #     return None
 
     def broadcast(self, signed_tx: str) -> Optional[str]:
         try:
@@ -118,97 +123,6 @@ class Transaction:
             print(f"Error: {e}")
             return None
 
-    def _confirm_action(self, warning_msg: str) -> bool:
-        return Prompter.confirm_action(
-            "Do you want to proceed anyway?",
-            warning_msg + "\nPlease verify that you are using the correct private key!"
-        )
-
-    def verify_stake_signature(self, raw_tx: str, privkey: str, pubkey: str, redeem_script: str, script_info: Dict, use_p2sh: bool = False) -> bool:
-        """Verify if the private key matches pubkey and can spend the first output"""
-        try:
-            # Get first output info
-            decoded = self.rpc.decoderawtransaction(raw_tx)
-            if not decoded or 'vout' not in decoded or not decoded['vout']:
-                warning = "Error: Failed to decode transaction"
-                return self._confirm_action(warning)
-            
-            vout = decoded['vout'][0]
-            
-            # Verify scriptPubKey is P2WSH
-            expected_script_hash = script_info['segwit']['hex'][4:]  # Remove '0020' prefix
-            actual_script_hash = vout['scriptPubKey']['hex'][4:]  # Remove '0020' prefix
-            
-            if expected_script_hash != actual_script_hash:
-                if self.verbose:
-                    print(f"Expected script hash: {expected_script_hash}")
-                    print(f"Actual script hash: {actual_script_hash}")
-                warning = "Error: Script hash mismatch"
-                return self._confirm_action(warning)
-            
-            # Get locktime from redeem script
-            locktime = int(script_info['asm'].split()[0])  # First number in ASM is locktime
-            
-            # Create a dummy transaction spending the first output
-            dummy_inputs = [{
-                'txid': decoded['txid'],
-                'vout': 0,  # First output (the locked one)
-                'sequence': 0xfffffffe  # Enable CLTV
-            }]
-            dummy_outputs = {
-                "1111111111111111111114oLvT2": "0.00000001"  # Burn address
-            }
-            
-            # Create dummy transaction with locktime
-            dummy_tx = self.rpc.createrawtransaction(
-                inputs=dummy_inputs,
-                outputs=dummy_outputs,
-                locktime=locktime  # Set locktime from script
-            )
-            
-            if dummy_tx is None:
-                warning = "Error: Failed to create test transaction"
-                return self._confirm_action(warning)
-            
-            # Prepare signing input
-            signing_input = {
-                'txid': decoded['txid'],
-                'vout': 0,
-                'scriptPubKey': vout['scriptPubKey']['hex'],
-                'amount': vout['value']
-            }
-            
-            # Add script info based on type
-            if use_p2sh:
-                signing_input['redeemScript'] = redeem_script
-            else:  # P2WSH
-                signing_input.update({
-                    'witnessScript': redeem_script,
-                    'amount': vout['value'],
-                    'witnessVersion': 0
-                })
-            
-            if self.verbose:
-                print("\nVerifying signature with input:")
-                print(json.dumps(signing_input, indent=2))
-            
-            # Try to sign with the private key
-            signed = self.rpc.signrawtransactionwithkey(dummy_tx, [privkey], [signing_input])
-            
-            if signed and signed.get('complete'):
-                print("✓ Private key can spend the locked output")
-                return True
-            else:
-                warning = "\nWarning: Could not verify that the private key can spend the locked output.\n" \
-                         "This could mean:\n" \
-                         "1. The private key does not match the configured public key\n" \
-                         "2. The private key cannot spend the locked output"
-                return self._confirm_action(warning)
-                
-        except Exception as e:
-            warning = f"\nWarning: Failed to verify private key.\nError: {e}"
-            return self._confirm_action(warning) 
-        
     def build_spend_tx(
         self,
         utxo: str,
