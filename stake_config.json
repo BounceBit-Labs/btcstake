@@ -1,0 +1,20 @@
+{
+  "bb_address": "0xfD24B690f81d85390fFAC82FA9930De1629C14f6",
+  "pubkey": "034d956c1091a1498c58393b391c18bd4a9fb7880ccbd33a521bd22fc263f7e1a1",
+  "days": 30,
+  "amount_btc": "0.00100000",
+  "change_address": "1EYWEKTtUmM7Q2tarTBdyiWvNbpfm8sfkp",
+  "utxos": [
+    "2d54637694d03fbe954002a83f51fb58bf86fc3e538efcd4c2a301dc1403d467:0"
+  ],
+  "use_p2sh": false,
+  "_comments": {
+    "bb_address": "BB chain address for staking",
+    "pubkey": "Your Bitcoin public key",
+    "days": "Number of days to lock funds",
+    "amount_btc": "Amount of BTC to lock",
+    "change_address": "Address to receive change",
+    "utxos": "UTXOs to spend (format: txid:vout)",
+    "use_p2sh": "Use P2SH instead of P2WSH (higher fees)"
+  }
+} 

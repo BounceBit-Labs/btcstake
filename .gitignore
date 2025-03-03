@@ -1,0 +1,15 @@
+test/
+agc.txt
+*.bak
+*.log
+*.tmp
+*.tmp.*
+*.tmp.*.*
+*.tmp.*.*.*
+*.tmp.*.*.*.*
+.DS_Store
+.idea
+.vscode
+.venv
+.pytest_cache
+.pytest_cache.*
