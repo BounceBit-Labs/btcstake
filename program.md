@@ -1,6 +1,19 @@
 # BTC Staking Program
 
-## Script Structure
+## Required: OP_RETURN Format
+
+```
+FSTP|ChainID|Contract|Address|Amount|Days
+```
+
+- FSTP: Fixed prefix (4 bytes)
+- ChainID: BB chain ID (2 bytes)
+- Contract: LSD contract address (20 bytes)
+- Address: BB chain address (20 bytes)
+- Amount: mBTC amount (4 bytes)
+- Days: Lock days (2 bytes)
+
+## Reference: Script Structure
 
 ```
 <locktime> OP_CHECKLOCKTIMEVERIFY OP_DROP <pubkey> OP_CHECKSIG
@@ -9,7 +22,7 @@
 - `locktime`: Unix timestamp (4 bytes)
 - `pubkey`: Compressed public key (33 bytes)
 
-## Transaction Types
+## Reference: Transaction Types
 
 ### 1. Lock Transaction
 
@@ -24,20 +37,7 @@
 - Input: P2WSH/P2SH UTXO
 - Output: Destination address
 
-## OP_RETURN Format
-
-```
-FSTP|ChainID|Contract|Address|Amount|Days
-```
-
-- FSTP: Fixed prefix (4 bytes)
-- ChainID: BB chain ID (2 bytes)
-- Contract: LSD contract address (20 bytes)
-- Address: BB chain address (20 bytes)
-- Amount: mBTC amount (4 bytes)
-- Days: Lock days (2 bytes)
-
-## Validation
+## Reference: Validation
 
 1. Lock:
    - Valid BB address

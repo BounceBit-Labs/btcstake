@@ -14,7 +14,7 @@ class Spender:
         self.validator = Validator(rpc=self.rpc, verbose=verbose, test=test)
         self.tx = Transaction(rpc=self.rpc, verbose=verbose, test=test)
         
-    def spend_stake(self, utxo: str, address: str, redeem_script: str, fee: Optional[str] = None) -> Optional[str]:
+    def spend_stake(self, utxo: str, address: str, redeem_script: str) -> Optional[str]:
         if not self.validator.validate_address(address):
             print("Error: Invalid destination address")
             return None
@@ -24,7 +24,7 @@ class Spender:
             print("Error: Invalid redeem script")
             return None
 
-        signed_tx = self.tx.build_spend_tx(utxo, address, redeem_script, fee)
+        signed_tx = self.tx.build_spend_tx(utxo, address, redeem_script)
         if not signed_tx:
             print("Error: Failed to build unlock transaction")
             return None
@@ -41,17 +41,17 @@ def parse_args():
     parser = argparse.ArgumentParser(description='BTC Unlock Tool')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
     parser.add_argument('-t', '--test', action='store_true', help='Test mode')
-    parser.add_argument('--config', default='spend_config.json', help='Config file path')
+    # parser.add_argument('--config', default='spend_config.json', help='Config file path')
     parser.add_argument('--utxo', help='UTXO to spend (txid:vout)')
     parser.add_argument('--redeem_script', help='Redeem script')
     parser.add_argument('--address', help='Destination address')
-    parser.add_argument('--fee', help='Transaction fee in BTC')
+    # parser.add_argument('--fee', type=Optional[str], help='Transaction fee in BTC')
     return parser.parse_args()
 
 def main():
     args = parse_args()
     spender = Spender(verbose=args.verbose, test=args.test)
-    spender.spend_stake(args.utxo, args.address, args.redeem_script, args.fee)
+    spender.spend_stake(args.utxo, args.address, args.redeem_script)
 
 if __name__ == '__main__':
     main() 

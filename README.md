@@ -10,12 +10,33 @@ Lock BTC with CLTV and create BB chain staking record.
 ## Installation
 
 ```bash
-git clone https://github.com/user/btcstake.git
+git clone https://github.com/BounceBit-Labs/btcstake.git
 cd btcstake
-pip install -r requirements.txt
 ```
 
-## Usage
+## OP_RETURN Data (Required)
+
+Generate BB chain staking record:
+
+```bash
+./opreturn.py \
+  --bb_address=<bb_chain_address> \
+  --days=<lock_days> \
+  --amount_btc=<amount>
+```
+
+Example output:
+```
+BB Address: 0x1234...
+Amount BTC: 0.001
+Amount mBTC: 1
+Days: 30
+OP_RETURN: 46535450177100...
+```
+
+## Reference Implementation
+
+The following tools are provided as reference only:
 
 ### 1. Lock BTC
 
@@ -43,7 +64,6 @@ pip install -r requirements.txt
 - `-v, --verbose`: Show detailed output
 - `-t, --test`: Test mode
 - `--config`: Load config from JSON file
-- `--fee`: Set custom fee (in BTC)
 
 ## Transaction Structure
 

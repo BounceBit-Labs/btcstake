@@ -239,8 +239,7 @@ class Transaction:
         self,
         utxo: str,
         address: str,
-        redeem_script: str,
-        fee: Optional[str] = None
+        redeem_script: str
     ) -> Optional[str]:
         """Build and sign unlock transaction"""
         try:
@@ -273,12 +272,10 @@ class Transaction:
             
             # Get amount and calculate fee
             amount = Decimal(utxo_info['value'])
-            if fee:
-                fee = Decimal(fee)
-            else:
-                fee_rate = self.rpc.estimatesmartfee(6)['feerate']
-                tx_size = 300 if use_p2sh else 200  # P2SH is larger than P2WSH
-                fee = Decimal(fee_rate) * tx_size / 1000000
+            
+            fee_rate = self.rpc.estimatesmartfee(6)['feerate']
+            tx_size = 300 if use_p2sh else 200  # P2SH is larger than P2WSH
+            fee = Decimal(fee_rate) * tx_size / 1000000
             
             # Calculate final amount
             spend_amount = amount - fee

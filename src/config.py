@@ -31,8 +31,12 @@ class Config:
         """Initialize config from command line args or config file"""
         # Load config file if provided
         if args.config:
-            with open(args.config) as f:
-                config = json.load(f)
+            try:
+                with open(args.config) as f:
+                    config = json.load(f)
+            except Exception as e:
+                print(f"Error loading config file: {e}")
+                # return
         else:
             config = {}
             
