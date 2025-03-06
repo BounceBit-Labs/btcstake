@@ -4,7 +4,7 @@ Lock BTC with CLTV and create BB chain staking record.
 
 ## Requirements
 
-- Bitcoin Core (with RPC enabled)
+- Bitcoin Core v22.0+ (with RPC enabled)
 - Python 3.7+
 
 ## Installation
@@ -12,7 +12,23 @@ Lock BTC with CLTV and create BB chain staking record.
 ```bash
 git clone https://github.com/BounceBit-Labs/btcstake.git
 cd btcstake
+pip install -r requirements.txt
 ```
+
+## Testing
+
+You can test the functionality on Bitcoin regtest network using:
+
+```bash
+cd src
+./regtest.sh
+```
+
+This script performs a complete test of the staking functionality on a local Bitcoin regtest network, including:
+- Setting up regtest environment
+- Creating and funding test addresses
+- Testing stake and unlock operations
+- Verifying OP_RETURN data
 
 ## OP_RETURN Data (Required)
 
@@ -44,9 +60,9 @@ The following tools are provided as reference only:
 ./stake.py \
   --pubkey=<public_key> \
   --days=<lock_days> \
-  --amount_btc=<amount> \
-  --bb_address=<bb_chain_address> \
-  --change_address=<btc_address> \
+  --amount-btc=<amount> \
+  --bb-address=<bb_chain_address> \
+  --change-address=<btc_address> \
   --utxos=<txid:vout,...>
 ```
 
@@ -55,7 +71,7 @@ The following tools are provided as reference only:
 ```bash
 ./spend.py \
   --utxo=<txid:vout> \
-  --redeem_script=<script> \
+  --redeem-script=<script> \
   --address=<destination>
 ```
 
@@ -68,5 +84,5 @@ The following tools are provided as reference only:
 ## Transaction Structure
 
 - Inputs: Simple UTXOs (pubkeyhash/pubkey)
-- Outputs: P2SH/P2WSH + Change + OP_RETURN
+- Outputs: P2WSH + Change + OP_RETURN
 - Signing: Only requires scriptPubKey for inputs 

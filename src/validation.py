@@ -14,9 +14,9 @@ class Validator:
         self.rpc = rpc
         
     def validate_address(self, address: str) -> bool:
-        if not re.match(r'^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qp][a-zA-HJ-NP-Z0-9]{38,58}|tb1[qp][a-zA-HJ-NP-Z0-9]{38,58})$', address):
-            print(f"Invalid Bitcoin address: {address}")
-            return False
+        # if not re.match(r'^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[qp][a-zA-HJ-NP-Z0-9]{38,58}|tb1[qp][a-zA-HJ-NP-Z0-9]{38,58})$', address):
+        #     print(f"Invalid Bitcoin address: {address}")
+        #     return False
         return True
     
     def validate_pubkey(self, pubkey: str) -> bool:

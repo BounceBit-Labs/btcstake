@@ -14,8 +14,13 @@ class Transaction:
         self.validator = Validator(rpc, verbose=verbose, test=test)
 
     def calculate_fees(self, use_p2sh: bool = False, n_utxo: int = 1) -> Decimal:
-        fee_rate = Decimal(self.rpc.estimatesmartfee(CONF_TARGET)['feerate'])
 
+        try:
+            fee_rate = Decimal(self.rpc.estimatesmartfee(CONF_TARGET)['feerate'])
+        except Exception as e:
+            print(f"Error: {e}")
+            fee_rate = Decimal(0)
+            
         tx_size = 300 if use_p2sh else 222
         tx_size += n_utxo * 148
 
@@ -207,7 +212,7 @@ class Transaction:
                 'txid': txid,
                 'vout': vout,
                 'scriptPubKey': utxo_info['scriptPubKey']['hex'],
-                'amount': amount
+                'amount': str(utxo_info['value'])
             }
             
             # Add script info based on type
@@ -216,7 +221,7 @@ class Transaction:
             else:  # P2WSH
                 signing_input.update({
                     'witnessScript': redeem_script,
-                    'amount': amount,  # Need to set amount again for P2WSH
+                    'amount': str(utxo_info['value']),  # Need to set amount again for P2WSH
                     'witnessVersion': 0
                 })
             

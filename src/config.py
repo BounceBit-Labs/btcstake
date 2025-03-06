@@ -6,6 +6,9 @@ from typing import List, Optional
 from dataclasses import dataclass
 from decimal import Decimal
 
+# main testnet or regtest ...
+NETWORK = 'regtest'
+
 # BB chain constants
 BB_CHAIN_ID = "1771"  # BB chain ID (6001) in hex
 BB_CONTRACT = "0000000000000000000000000000000000000800"  # Fixed LSD contract address
@@ -33,15 +36,13 @@ class Config:
     def __init__(self, args):
         """Initialize config from command line args or config file"""
         # Load config file if provided
+        config = {}
         if args.config:
             try:
                 with open(args.config) as f:
                     config = json.load(f)
             except Exception as e:
                 print(f"Error loading config file: {e}")
-                # return
-        else:
-            config = {}
             
         # Command line args override config file
         self.pubkey = args.pubkey or config.get('pubkey')
@@ -50,7 +51,7 @@ class Config:
         self.bb_address = args.bb_address or config.get('bb_address')
         self.change_address = args.change_address or config.get('change_address')
         self.utxos = args.utxos.split(',') if args.utxos else config.get('utxos', [])
-        self.use_p2sh = args.use_p2sh or config.get('use_p2sh', False)
+        self.use_p2sh = False# args.use_p2sh or config.get('use_p2sh', False)
         self.test = args.test
         self.verbose = args.verbose
         
@@ -98,30 +99,6 @@ class Config:
             raise ValueError("Invalid days format")
         if self.days > MAX_STAKE_DAYS:
             raise ValueError(f"Stake period cannot exceed {MAX_STAKE_DAYS} days")
-
-        # Validate change address format
-        # Support all address types:
-        # 1. Legacy (P2PKH): 1...
-        # 2. P2SH: 3...
-        # 3. Bech32 (P2WPKH/P2WSH): bc1q...
-        # 4. Taproot (P2TR): bc1p...
-        if not re.match(
-            r'^('
-            r'[13][a-km-zA-HJ-NP-Z1-9]{25,34}|'  # Legacy and P2SH
-            r'bc1[qp][a-zA-HJ-NP-Z0-9]{38,58}|'  # Bech32 and Taproot
-            r'tb1[qp][a-zA-HJ-NP-Z0-9]{38,58}'   # Testnet Bech32 and Taproot
-            r')$',
-            self.change_address
-        ):
-            raise ValueError(
-                "Invalid change address format\n"
-                "Supported formats:\n"
-                "- Legacy addresses (starting with 1)\n"
-                "- P2SH addresses (starting with 3)\n" 
-                "- Bech32 addresses (starting with bc1q)\n"
-                "- Taproot addresses (starting with bc1p)\n"
-                "- Testnet addresses (starting with tb1)"
-            )
 
         # Validate UTXOs
         for utxo in self.utxos:

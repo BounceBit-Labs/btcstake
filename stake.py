@@ -4,12 +4,11 @@ import argparse
 from decimal import Decimal
 from datetime import datetime
 from typing import Optional, Dict
-from src.config import Config
+from src.config import Config, NETWORK
 from src.tx import Transaction
 from src.script import Script
 from src.utils import Prompter, BitcoinRPC
 from src.validation import Validator
-
 
 class Staker:
     def __init__(self, verbose: bool = False, tx: Transaction = None, script: Script = None, validator: Validator = None, rpc: BitcoinRPC = None):
@@ -44,7 +43,7 @@ class Staker:
             config.change_address,
             op_return_data,
             script_info,
-            config.use_p2sh
+            False# config.use_p2sh
         )
         if not result:
             print("Error: Failed to build transaction")
@@ -86,7 +85,7 @@ class Staker:
         print(f"UTXO: {txid}:0")
         print(f"Redeem Script: {redeem_script}")
         print(f"Change Address: {change_address}")
-        print(f"./spend.py --utxo={txid}:0 --redeem_script={redeem_script} --address={change_address}")
+        print(f"python3 spend.py --utxo={txid}:0 --redeem-script={redeem_script} --address={change_address}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description='BTC Staking Tool')
@@ -94,10 +93,9 @@ def parse_args():
     parser.add_argument('--config', default='stake_config.json', help='Config file path')
     parser.add_argument('--pubkey', help='Public key')
     parser.add_argument('--days', type=int, help='Timelock days')
-    parser.add_argument('--amount_btc', help='Amount in BTC')
-    parser.add_argument('--bb_address', help='BB chain address')
-    parser.add_argument('--change_address', help='Change address')
-    parser.add_argument('--use_p2sh', action='store_true', help='Use P2SH instead of P2WSH')
+    parser.add_argument('--amount-btc', help='Amount in BTC')
+    parser.add_argument('--bb-address', help='BB chain address')
+    parser.add_argument('--change-address', help='Change address')
     parser.add_argument('--utxos', help='UTXOs to spend')
     parser.add_argument('-t', '--test', action='store_true', help='Test mode')
     return parser.parse_args()
@@ -108,7 +106,7 @@ def main():
     if args.verbose:
         print(f"Config: {config.__dict__}")
     
-    rpc = BitcoinRPC(verbose=args.verbose, test=args.test)
+    rpc = BitcoinRPC(NETWORK, verbose=args.verbose, test=args.test)
     tx = Transaction(rpc, verbose=args.verbose, test=args.test)
     script = Script(rpc, verbose=args.verbose, test=args.test)
     validator = Validator(rpc, verbose=args.verbose, test=args.test)

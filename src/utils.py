@@ -9,16 +9,17 @@ from typing import Any, Dict, List, Optional
 class BitcoinRPC:
     """Bitcoin RPC wrapper using bitcoin-cli"""
     
-    def __init__(self, test: bool = False, verbose: bool = False):
+    def __init__(self, network: str, test: bool = False, verbose: bool = False):
         self.cli = 'bitcoin-cli'
         self.test = test
         self.verbose = verbose
+        self.network = "-chain="+network
 
     def _call(self, *args) -> Any:
         """Execute bitcoin-cli command and return parsed JSON result"""
         try:
             str_args = [str(arg) if not isinstance(arg, (dict, list)) else json.dumps(arg) for arg in args]
-            cmd = [self.cli]
+            cmd = [self.cli, self.network]
             cmd.extend(str_args)
             
             print(f"\nExecuting: {' '.join(cmd)}")
